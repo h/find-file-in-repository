@@ -43,7 +43,6 @@
 ;; be happy to include your modifications.
 ;;
 ;; Recommended keybinding:
-;;
 ;;    (global-set-key (kbd "C-x f") 'find-file-in-repository)
 
 ;;; Code:
