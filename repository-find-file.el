@@ -25,7 +25,7 @@
 ;; "C-x f" command), that auto-completes all files in the current git,
 ;; mercurial, or other type of repository. When outside of a
 ;; repository, find-file-in-repository conveniently drops back to
-;; using find-file, (or ido-find-file), which makes it suitable
+;; using find-file, (or ido-find-file), which makes it a suitable
 ;; replacement for the "C-x f" keybinding.
 ;;
 ;; It is similar to, but much faster and more robust than the
@@ -41,28 +41,52 @@
 ;; Please send a pull request to
 ;; https://github.com/hoffstaetter/find-file-in-repository and I will
 ;; be happy to include your modifications.
+;;
+;; Recommended keybinding:
+;;
+;;    (global-set-key (kbd "C-x f") 'find-file-in-repository)
 
 ;;; Code:
+(defun ffir-shell-command (command file-separator working-dir)
+  "Executes 'command' and returns the list of printed files in
+   the form '((short/file/name . full/path/to/file) ...). The
+   'file-separator' character is used to split the file names
+   printed by the shell command and is usually set to \\n or \\0"
+  (let ((command-output (shell-command-to-string
+                         (format "cd %s; %s"
+                                 (shell-quote-argument working-dir) command))))
+    (let ((files (delete "" (split-string command-output file-separator))))
+      (mapcar (lambda (file)
+                (cons file (expand-file-name file working-dir)))
+              files))))
 
-(defun ffir-shell-command (command file-separator)
-  "Executes 'command' in the directory given by
-  'repository-root', and returns the result split into a list
-  with the 'file-separator' character"
-  (lambda (repository-root)
-    (delete "" (split-string
-                (shell-command-to-string
-                 (format "cd %s; %s"
-                         (shell-quote-argument repository-root) command))
-                file-separator))))
+(defun ffir-locate-dominating-file (file name)
+  "Identical to 'locate-dominating-file' on modern Emacs. We
+  re-implement it here, since locate-dominating-file doesn't
+  accept 'name' predicates on older versions of emacs."
+  (setq file (abbreviate-file-name file))
+  (let ((root nil) try)
+    (while (not (or root
+                    (null file)
+                    (string-match locate-dominating-stop-dir-regexp file)))
+      (setq try (if (stringp name)
+                    (file-exists-p (expand-file-name name file))
+                  (funcall name file)))
+      (cond (try (setq root file))
+            ((equal file (setq file (file-name-directory
+                                     (directory-file-name file))))
+             (setq file nil))))
+    (if root (file-name-as-directory root))))
 
 (defun ffir-locate-dominating-file-top (start-directory filename)
   "Returns the furthest ancester directory of 'start-directory'
    that contains a file of name 'filename'"
   (when start-directory
-    (let ((next-directory (locate-dominating-file start-directory filename)))
+    (let ((next-directory
+           (ffir-locate-dominating-file start-directory filename)))
       (if next-directory
           (ffir-locate-dominating-file-top next-directory filename)
-        start-directory))))
+        (expand-file-name start-directory)))))
 
 (defun ffir-directory-contains-which-file (file-list directory)
   "Checks which of the files in 'file-list' exists inside
@@ -71,13 +95,14 @@
   corresponding value is returned. If 'directory' contains none
   of the filenames, nil is returned."
   (when file-list
-    (if (file-exists-p (car (car file-list)))
-        (cdr (car file-list))
-      (ffir-directory-contains-p (cdr file-list) directory))))
+    (let ((filename (expand-file-name (car (car file-list)) directory)))
+      (if (file-exists-p filename)
+          (cdr (car file-list))
+        (ffir-directory-contains-which-file (cdr file-list) directory)))))
 
 (defun ffir-when-ido (ido-value non-ido-value)
   "Returns ido-value when ido is enabled, otherwise returns non-ido-value."
-  (if (and (bound-p 'ido-mode) ido-mode)
+  (if (and (boundp 'ido-mode) ido-mode)
       ido-value
     non-ido-value))
 
@@ -88,44 +113,59 @@
   contains a .git/.hg/_darcs/(...) file.")
 
 (defvar ffir-repository-types
-  '((".git"   . ,(repository-shell-command "git ls-files -z"       "\0"))
-    (".hg"    . ,(repository-shell-command "hg locate -0"          "\0"))
-    ("_darcs" . ,(repository-shell-command "darcs show files -0"   "\0"))
-    (".bzr"   . ,(repository-shell-command "bzr ls --versioned -0" "\0"))
-    ("_MTN"   . ,(repository-shell-commnad "mtn list known"        "\n"))
+  `((".git"   . ,(lambda (dir)
+                   (ffir-shell-command "git ls-files -z"       "\0" dir)))
+    (".hg"    . ,(lambda (dir)
+                   (ffir-shell-command "hg locate -0"          "\0" dir)))
+    ("_darcs" . ,(lambda (dir)
+                   (ffir-shell-command "darcs show files -0"   "\0" dir)))
+    (".bzr"   . ,(lambda (dir)
+                   (ffir-shell-command "bzr ls --versioned -0" "\0" dir)))
+    ("_MTN"   . ,(lambda (dir)
+                   (ffir-shell-command "mtn list known"        "\n" dir)))
+
     ;; svn repos must be searched differently from others since
     ;; every svn sub-directory contains a .svn folder as well
-    (".svn"   . ,(repository-shell-command "svn list"              "\n")))
+    (".svn"   . ,(lambda (start-dir) (funcall
+                                      ffir-shell-command "svn list" "\n"
+                                      (ffir-locate-dominating-file-top
+                                       start-dir ".svn")))))
   "List of supported repository types for find-file-in-repository.
   The first entry in each tuple is a file name determining the
   repository type. The second entry in the tuple is a function
   that takes as argument the repository root, and returns the
   list of file names tracked by the repository.")
 
-(defun find-file-in-repository (start-directory)
+(defun find-file-in-repository ()
   "find-file-in-repository will autocomplete all files in the
    current git, mercurial or other type of repository, using
    ido-find-file when available. When the current file is not
    located inside of any repository, falls back on a regular
    find-file operation."
   (interactive)
-  (let ((repo-directory (locate-dominating-file
-                         start-directory
-                         (apply-partially ffir-directory-contains-which-file
-                                          ffir-repository-types))))
+  (let ((repo-directory
+         (expand-file-name (ffir-locate-dominating-file
+                            default-directory
+                            (lambda (directory)
+                              (ffir-directory-contains-which-file
+                               ffir-repository-types directory))))))
+    ;; check whether we are in a supported repository type
     (if (and repo-directory
              (not (and ffir-avoid-HOME-repository
-                       (equal (getenv "HOME") repo-directory))))
-        (let ((file-list-function (ffir-directory-contains-which-file
-                                   ffir-repository-types repo-directory))
-              (file-list (file-list-function repo-directory))
-              (completing-read (ffir-when-ido ido-completing-read
-                                              completing-read))
-              (file (completing-read
-                     "Find file in repository: " (mapcar 'car file-list))))
-          (find-file (cdr (assoc file file-list))))
-      (let ((find-file (ffir-when-ido ido-find-file find-file)))
-        (execute-command 'find-file)))))
+                       (equal repo-directory
+                              (expand-file-name
+                               (format "%s/" (getenv "HOME")))))))
+        ;; auto-complete files tracked by the repository system
+        (let ((file-list (funcall (ffir-directory-contains-which-file
+                                   ffir-repository-types repo-directory)
+                                  repo-directory)))
+          (let ((file (funcall
+                       (ffir-when-ido 'ido-completing-read 'completing-read)
+                       "Find file in repository: " (mapcar 'car file-list))))
+            (find-file (cdr (assoc file file-list)))))
+      ;; fall back on regular find-file when no repository can be found
+      (let ((find-file (ffir-when-ido 'ido-find-file 'find-file)))
+        (command-execute find-file)))))
 
 (defalias 'ffip 'find-file-in-project)
 
