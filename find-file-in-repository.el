@@ -125,8 +125,7 @@
 
     ;; svn repos must be searched differently from others since
     ;; every svn sub-directory contains a .svn folder as well
-    (".svn"   . ,(lambda (start-dir) (funcall
-                                      ffir-shell-command "svn list" "\n"
+    (".svn"   . ,(lambda (start-dir) (ffir-shell-command "svn list" "\n"
                                       (ffir-locate-dominating-file-top
                                        start-dir ".svn")))))
   "List of supported repository types for find-file-in-repository.
@@ -135,6 +134,7 @@
   that takes as argument the repository root, and returns the
   list of file names tracked by the repository.")
 
+;;;###autoload
 (defun find-file-in-repository ()
   "find-file-in-repository will autocomplete all files in the
    current git, mercurial or other type of repository, using
@@ -142,32 +142,34 @@
    located inside of any repository, falls back on a regular
    find-file operation."
   (interactive)
-  (let ((repo-directory
-         (expand-file-name (ffir-locate-dominating-file
-                            default-directory
-                            (lambda (directory)
-                              (ffir-directory-contains-which-file
-                               ffir-repository-types directory))))))
+  (let ((repo-directory (ffir-locate-dominating-file
+                         default-directory
+                         (lambda (directory)
+                           (ffir-directory-contains-which-file
+                            ffir-repository-types directory))))
+        (home-dir (format "%s/" (getenv "HOME"))))
     ;; check whether we are in a supported repository type
     (if (and repo-directory
              (not (and ffir-avoid-HOME-repository
-                       (equal repo-directory
-                              (expand-file-name
-                               (format "%s/" (getenv "HOME")))))))
+                       (equal (expand-file-name repo-directory)
+                              (expand-file-name home-dir)))))
         ;; auto-complete files tracked by the repository system
-        (let ((file-list (funcall (ffir-directory-contains-which-file
-                                   ffir-repository-types repo-directory)
-                                  repo-directory)))
-          (let ((file (funcall
-                       (ffir-when-ido 'ido-completing-read 'completing-read)
-                       "Find file in repository: " (mapcar 'car file-list))))
-            (find-file (cdr (assoc file file-list)))))
+        (let ((repo-directory (expand-file-name repo-directory)))
+          (let ((file-list (funcall (ffir-directory-contains-which-file
+                                     ffir-repository-types repo-directory)
+                                    repo-directory)))
+            (let ((file (funcall
+                         (ffir-when-ido 'ido-completing-read 'completing-read)
+                         "Find file in repository: " (mapcar 'car file-list))))
+              (find-file (cdr (assoc file file-list))))))
       ;; fall back on regular find-file when no repository can be found
       (let ((find-file (ffir-when-ido 'ido-find-file 'find-file)))
         (command-execute find-file)))))
 
-(defalias 'ffip 'find-file-in-project)
+;;;###autoload
+(defalias 'ffir 'find-file-in-repository)
 
+;;;###autoload
 (progn
   (put 'ffir-repository-types 'safe-local-variable 'listp)
   (put 'ffir-avoid-HOME-repository 'safe-local-variable 'booleanp))
