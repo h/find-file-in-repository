@@ -134,6 +134,28 @@
   that takes as argument the repository root, and returns the
   list of file names tracked by the repository.")
 
+(defun ffir-ido-setup ()
+  "Add fallback bindings to ido keymap while ffir is active."
+  (define-key ido-completion-map (kbd "C-x C-f") 'ido-fallback-command)
+  (define-key ido-completion-map (kbd "C-x f") 'ido-fallback-command))
+
+(defun ffir-ido-find-file (file-list)
+  "Actually find file to open, using ido."
+  (add-hook 'ido-setup-hook 'ffir-ido-setup)
+  (unwind-protect
+      (let ((file (ido-completing-read "Find file in repository: "
+                                       (mapcar 'car file-list))))
+        (cond
+         (file (find-file (cdr (assoc file file-list))))
+         ((eq ido-exit 'fallback) (ido-find-file))))
+    (remove-hook 'ido-setup-hook 'ffir-ido-setup)))
+
+(defun ffir-find-file (file-list)
+  "Actually find file to open, without using ido."
+  (let ((file (completing-read "Find file in repository: "
+                               (mapcar 'car file-list))))
+    (find-file (cdr (assoc file file-list)))))
+
 ;;;###autoload
 (defun find-file-in-repository ()
   "find-file-in-repository will autocomplete all files in the
@@ -154,14 +176,12 @@
                        (equal (expand-file-name repo-directory)
                               (expand-file-name home-dir)))))
         ;; auto-complete files tracked by the repository system
-        (let ((repo-directory (expand-file-name repo-directory)))
-          (let ((file-list (funcall (ffir-directory-contains-which-file
-                                     ffir-repository-types repo-directory)
-                                    repo-directory)))
-            (let ((file (funcall
-                         (ffir-when-ido 'ido-completing-read 'completing-read)
-                         "Find file in repository: " (mapcar 'car file-list))))
-              (find-file (cdr (assoc file file-list))))))
+        (let* ((repo-directory (expand-file-name repo-directory))
+               (file-list (funcall (ffir-directory-contains-which-file
+                                    ffir-repository-types repo-directory)
+                                   repo-directory)))
+          (funcall (ffir-when-ido 'ffir-ido-find-file 'ffir-find-file)
+                   file-list))
       ;; fall back on regular find-file when no repository can be found
       (let ((find-file (ffir-when-ido 'ido-find-file 'find-file)))
         (command-execute find-file)))))
