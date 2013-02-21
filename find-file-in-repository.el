@@ -113,7 +113,8 @@
 
 (defvar ffir-repository-types
   `((".git"   . ,(lambda (dir)
-                   (ffir-shell-command "git ls-files -z"       "\0" dir)))
+                   (ffir-shell-command
+                    "git ls-files -zco --exclude-standard"     "\0" dir)))
     (".hg"    . ,(lambda (dir)
                    (ffir-shell-command "hg locate -0"          "\0" dir)))
     ("_darcs" . ,(lambda (dir)
