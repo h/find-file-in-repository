@@ -144,10 +144,11 @@
   "Actually find file to open, using ido."
   (add-hook 'ido-setup-hook 'ffir-ido-setup)
   (unwind-protect
-      (let ((file (ido-completing-read "Find file in repository: "
-                                       (mapcar 'car file-list))))
+      (let* ((file (ido-completing-read "Find file in repository: "
+                                        (mapcar 'car file-list)))
+             (path (or (cdr (assoc file file-list)) file)))
         (cond
-         (file (find-file (cdr (assoc file file-list))))
+         (file (find-file path))
          ((eq ido-exit 'fallback) (ido-find-file))))
     (remove-hook 'ido-setup-hook 'ffir-ido-setup)))
 
