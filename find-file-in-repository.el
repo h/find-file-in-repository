@@ -120,7 +120,8 @@
     ("_darcs" . ,(lambda (dir)
                    (ffir-shell-command "darcs show files -0"   "\0" dir)))
     (".bzr"   . ,(lambda (dir)
-                   (ffir-shell-command "bzr ls --versioned -0" "\0" dir)))
+                   (ffir-shell-command
+                    "bzr ls --versioned --recursive -0"        "\0" dir)))
     ("_MTN"   . ,(lambda (dir)
                    (ffir-shell-command "mtn list known"        "\n" dir)))
 
