@@ -51,6 +51,8 @@
     (or (string-equal system-type "windows-nt")
         (string-equal system-type "ms-dos")))
 
+(defvar format-str)
+
 (setq format-str
     (if (system-is-windows)
         "cd %s & %s"
