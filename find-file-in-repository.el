@@ -46,13 +46,23 @@
 ;;    (global-set-key (kbd "C-x f") 'find-file-in-repository)
 
 ;;; Code:
+
+(defun system-is-windows()
+    (or (string-equal system-type "windows-nt")
+        (string-equal system-type "ms-dos")))
+
+(setq format-str
+    (if (system-is-windows)
+        "cd %s & %s"
+        "cd %s; %s"))
+
 (defun ffir-shell-command (command file-separator working-dir)
   "Executes 'command' and returns the list of printed files in
    the form '((short/file/name . full/path/to/file) ...). The
    'file-separator' character is used to split the file names
    printed by the shell command and is usually set to \\n or \\0"
   (let ((command-output (shell-command-to-string
-                         (format "cd %s; %s"
+                         (format format-str
                                  (shell-quote-argument working-dir) command))))
     (let ((files (delete "" (split-string command-output file-separator))))
       (mapcar (lambda (file)
