@@ -4,7 +4,7 @@ find-file-in-repository.el
 Emacs: Quickly find files in a git, mercurial or other repository
 =================================================================
 
-This libaray provides a drop-in replacement for find-file (ie. the
+This library provides a drop-in replacement for find-file (ie. the
 "C-x f" command), that auto-completes all files in the current git,
 mercurial, or other type of repository. When outside of a
 repository, find-file-in-repository conveniently drops back to
