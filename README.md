@@ -1,6 +1,8 @@
 find-file-in-repository.el
 --------------------------
 
+Contributions are welcome--just send me a pull request.
+
 Emacs: Quickly find files in a git, mercurial or other repository
 =================================================================
 
