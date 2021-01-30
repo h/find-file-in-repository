@@ -127,7 +127,7 @@
 (defvar ffir-repository-types
   `((".git"   . ,(lambda (dir)
                    (ffir-shell-command
-                    "git ls-files --recurse-submodules -zco --exclude-standard"     "\0" dir)))
+                    "git ls-files --recurse-submodules -zc --exclude-standard"      "\0" dir)))
     (".hg"    . ,(lambda (dir)
                    (ffir-shell-command "hg locate -0"                               "\0" dir)))
     ("_darcs" . ,(lambda (dir)
