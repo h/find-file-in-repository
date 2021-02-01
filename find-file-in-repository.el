@@ -60,6 +60,12 @@
   :type 'symbol
   :group 'find-file-in-repository)
 
+(defcustom ffir-git-use-recurse-submodules t
+  "Whether to use --recurse-submodules for git ls-files. Git currently doesn't support combinding this option with --others (show untracked files)"
+  :type 'boolean
+  :safe 'booleanp
+  :group 'find-file-in-repository)
+
 (defun ffir-shell-command (command file-separator working-dir)
   "Executes 'command' and returns the list of printed files in
    the form '((short/file/name . full/path/to/file) ...). The
@@ -127,7 +133,9 @@
 (defvar ffir-repository-types
   `((".git"   . ,(lambda (dir)
                    (ffir-shell-command
-                    "git ls-files --recurse-submodules -zco --exclude-standard"     "\0" dir)))
+                    (if ffir-git-use-recurse-submodules
+                        "git ls-files --recurse-submodules -zc --exclude-standard"
+                      "git ls-files -zco --exclude-standard")                       "\0" dir)))
     (".hg"    . ,(lambda (dir)
                    (ffir-shell-command "hg locate -0"                               "\0" dir)))
     ("_darcs" . ,(lambda (dir)
