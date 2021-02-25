@@ -137,14 +137,14 @@
                         "git ls-files --recurse-submodules -zc --exclude-standard"
                       "git ls-files -zco --exclude-standard")                       "\0" dir)))
     (".hg"    . ,(lambda (dir)
-                   (ffir-shell-command "hg locate -0"                               "\0" dir)))
+                   (ffir-shell-command "hg locate -0"          "\0" dir)))
     ("_darcs" . ,(lambda (dir)
-                   (ffir-shell-command "darcs show files -0"                        "\0" dir)))
+                   (ffir-shell-command "darcs show files -0"   "\0" dir)))
     (".bzr"   . ,(lambda (dir)
                    (ffir-shell-command
-                    "bzr ls --versioned --recursive -0"                             "\0" dir)))
+                    "bzr ls --versioned --recursive -0"        "\0" dir)))
     ("_MTN"   . ,(lambda (dir)
-                   (ffir-shell-command "mtn list known"                             "\n" dir)))
+                   (ffir-shell-command "mtn list known"        "\n" dir)))
 
     ;; svn repos must be searched differently from others since
     ;; every svn sub-directory contains a .svn folder as well
