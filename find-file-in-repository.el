@@ -60,7 +60,7 @@
   :type 'symbol
   :group 'find-file-in-repository)
 
-(defcustom ffir-git-use-recurse-submodules t
+(defcustom ffir-git-use-recurse-submodules nil
   "Whether to use --recurse-submodules for git ls-files. Git currently doesn't support combinding this option with --others (show untracked files)"
   :type 'boolean
   :safe 'booleanp
