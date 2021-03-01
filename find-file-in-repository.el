@@ -66,6 +66,12 @@
   :safe 'booleanp
   :group 'find-file-in-repository)
 
+(defcustom ffir-prompt "Find file in repository: "
+  "Prompt to display."
+  :type 'string
+  :safe 'stringp
+  :group 'find-file-in-repository)
+
 (defun ffir-shell-command (command file-separator working-dir)
   "Executes 'command' and returns the list of printed files in
    the form '((short/file/name . full/path/to/file) ...). The
@@ -175,7 +181,7 @@
 
 (defun ffir-find-file (file-list)
   "Actually find file to open, using completing-read."
-  (let ((file (completing-read "Find file in repository: "
+  (let ((file (completing-read ffir-prompt
                         (mapcar 'car file-list))))
     (find-file (cdr (assoc file file-list)))))
 
@@ -183,7 +189,7 @@
   "Actually find file to open, using ido."
   (add-hook 'ido-setup-hook 'ffir-ido-setup)
   (unwind-protect
-      (let* ((file (ido-completing-read "Find file in repository: "
+      (let* ((file (ido-completing-read ffir-prompt
                                         (mapcar 'car file-list)))
              (path (or (cdr (assoc file file-list)) file)))
         (cond
@@ -193,7 +199,7 @@
 
 (defun ffir-ivy-find-file (file-list)
   "Actually find file to open, using ivy."
-  (let* ((file (ivy-read "Find file in repository: "
+  (let* ((file (ivy-read ffir-prompt
                          (mapcar 'car file-list)
                          :keymap (ffir-ivy-make-keymap)))
                (path (or (cdr (assoc file file-list)) file)))
